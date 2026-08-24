@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポケモン○×クイズ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" class="app">
+  <main class="quiz-container">
+
+    <section v-if="screen === 'settings'" class="card settings-card">
+      <header class="quiz-header">
+        <h1>ポケモン○×クイズ</h1>
+        <p>出題範囲を選択してください</p>
+      </header>
+
+      <div class="settings-actions">
+        <button class="sub-button" @click="selectAll">すべて選択</button>
+        <button class="sub-button" @click="clearAll">すべて解除</button>
+      </div>
+
+      <section v-for="generation in generations" :key="generation.id" class="generation">
+        <div class="generation-header">
+          <label class="check-row generation-row">
+            <input
+              type="checkbox"
+              :checked="isGenerationFullySelected(generation)"
+              :ref="el => setGenerationCheckboxRef(generation.id, el)"
+              @change="toggleGeneration(generation)"
+            >
+            <span class="generation-name">{{ generation.name }}</span>
+          </label>
+          <span class="selection-count">
+            {{ selectedTitleCount(generation) }}/{{ generation.titles.length }}
+          </span>
+        </div>
+
+        <div class="title-list">
+          <label v-for="title in generation.titles" :key="title.id" class="check-row title-row">
+            <input type="checkbox" v-model="selectedTitles" :value="title.id">
+            <span>{{ title.name }}</span>
+          </label>
+        </div>
+      </section>
+
+      <div class="selected-summary">
+        選択中：<strong>{{ selectedTitles.length }}</strong>タイトル
+      </div>
+
+      <p v-if="settingsError" class="settings-error">{{ settingsError }}</p>
+
+      <button
+        class="primary-button start-button"
+        :disabled="selectedTitles.length === 0"
+        @click="startQuiz"
+      >
+        クイズ開始
+      </button>
+    </section>
+
+    <template v-else>
+      <header class="quiz-header">
+        <h1>ポケモン○×クイズ</h1>
+        <p>{{ selectedTitles.length }}タイトルから出題</p>
+      </header>
+
+      <section v-if="loading" class="card status-card">
+        <p>ポケモンのデータを取得しています...</p>
+      </section>
+
+      <section v-else-if="errorMessage" class="card status-card error">
+        <h2>データ取得エラー</h2>
+        <p>{{ errorMessage }}</p>
+        <button class="primary-button" @click="startQuiz">再読み込み</button>
+      </section>
+
+      <section v-else class="card">
+        <div class="quiz-info">
+          <span>問題 {{ questionNumber }}</span>
+          <span>正解 {{ score }} / {{ answeredCount }}</span>
+        </div>
+
+        <div class="question-type">{{ currentQuestion.typeLabel }}</div>
+
+        <div
+          v-if="currentQuestion.pokemonImage"
+          class="pokemon-image"
+          :class="{ silhouette: currentQuestion.isSilhouetteQuestion }"
+        >
+          <img :src="currentQuestion.pokemonImage" :alt="currentQuestion.pokemonName">
+        </div>
+
+        <div v-if="currentQuestion.isCryQuestion" class="cry-player">
+          <p>🔊 鳴き声を聞いて答えてください</p>
+          <audio controls :src="currentQuestion.cryUrl"></audio>
+        </div>
+
+        <h2 class="question">{{ currentQuestion.text }}</h2>
+
+        <div v-if="!answered" class="answer-buttons">
+          <button class="answer-button true-button" @click="answer(true)">○</button>
+          <button class="answer-button false-button" @click="answer(false)">×</button>
+        </div>
+
+        <div v-else class="result-area">
+          <div class="result-message" :class="{ correct: isCorrect, incorrect: !isCorrect }">
+            {{ isCorrect ? '正解！' : '不正解…' }}
+          </div>
+          <p class="answer-explanation">{{ currentQuestion.explanation }}</p>
+          <button class="primary-button next-button" @click="nextQuestion">次の問題</button>
+        </div>
+
+        <button class="settings-link" @click="backToSettings">出題範囲を変更</button>
+      </section>
+
+      <footer class="footer">
+        <small>Data provided by <a href="https://pokeapi.co/" target="_blank" rel="noopener noreferrer">PokéAPI</a></small>
+      </footer>
+    </template>
+  </main>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
