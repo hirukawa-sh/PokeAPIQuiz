@@ -201,7 +201,9 @@ const versionPokemonCache = new Map();
 
 createApp({
   data() { return {
-    screen:'settings', generations:generationDefinitions,
+    
+      
+      loadingPokemonData: false,loadingNextQuestion: false,screen:'settings', generations:generationDefinitions,
     selectedTitles:['red-blue','yellow'], generationCheckboxRefs:{},
     pokemonList:[], currentQuestion:null, questionHistory:new Set(),
     questionPokemonHistory:[], questionNumber:0, score:0, answeredCount:0,
@@ -221,18 +223,47 @@ createApp({
     shuffleArray(a){return [...a].sort(()=>Math.random()-0.5);},
 
     async startQuiz(){
-      if(!this.selectedTitles.length){this.settingsError='少なくとも1つの出題範囲を選択してください。';return;}
-      this.settingsError='';this.errorMessage='';this.loading=true;this.screen='quiz';
-      this.questionHistory=new Set();this.questionPokemonHistory=[];this.questionNumber=0;this.score=0;this.answeredCount=0;this.answered=false;
-      try{const ids=await this.fetchSelectedPokemonIds();if(!ids.length)throw new Error('選択された出題範囲にポケモンがありません。');this.pokemonList=this.shuffleArray(ids).map(id=>({id}));await this.nextQuestion();}
-      catch(e){console.error(e);this.errorMessage=e.message||'データ取得エラーが発生しました。';}
-      finally{this.loading=false;}
+      if(!this.selectedTitles.length){
+        this.settingsError='少なくとも1つの出題範囲を選択してください。';
+        return;
+      }
+
+      this.settingsError='';
+      this.errorMessage='';
+      this.loading=true;
+      this.loadingPokemonData=true;
+      this.screen='quiz';
+
+      this.questionHistory=new Set();
+      this.questionPokemonHistory=[];
+      this.questionNumber=0;
+      this.score=0;
+      this.answeredCount=0;
+      this.answered=false;
+
+      try{
+        const ids=await this.fetchSelectedPokemonIds();
+
+        if(!ids.length){
+          throw new Error('選択された出題範囲にポケモンがありません。');
+        }
+
+        this.pokemonList=this.shuffleArray(ids).map(id=>({id}));
+
+        await this.nextQuestion();
+      }catch(e){
+        console.error('Data loading error:',e);
+        this.errorMessage=e.message||'データ取得エラーが発生しました。';
+      }finally{
+        this.loadingPokemonData=false;
+        this.loading=false;
+      }
     },
     async fetchSelectedPokemonIds(){const result=new Set();for(const title of this.getSelectedTitleDefinitions()){const ids=await this.fetchVersionPokemonIds(title);ids.forEach(id=>result.add(id));}return [...result];},
     async fetchVersionPokemonIds(title){
       if(versionPokemonCache.has(title.id))return versionPokemonCache.get(title.id);
       const r=await fetch(`${API_BASE}/version-group/${title.versionGroup}`);if(!r.ok)throw new Error(`Version Group API error: ${r.status}`);const g=await r.json();const ids=new Set();
-      for(const p of g.pokedexes||[]){const pr=await fetch(p.url);if(!pr.ok)continue;const d=await pr.json();for(const e of d.pokemon_entries||[]){const m=e.pokemon_species.url.match(/\/(?:pokemon|pokemon-species)\/(\d+)\/$/);if(m)ids.add(Number(m[1]));}}
+      for(const p of g.pokedexes||[]){const pr=await fetch(p.url);if(!pr.ok)continue;const d=await pr.json();for(const e of d.pokemon_entries||[]){const m=e.pokemon_species.url.match(/\/(?:pokemon|pokemon-species)\/(\d+)(?:\/|$)/);if(m)ids.add(Number(m[1]));}}
       const out=[...ids];versionPokemonCache.set(title.id,out);return out;
     },
     async fetchPokemon(id){
@@ -306,10 +337,56 @@ createApp({
       };
     },
     async createCryQuestion(p){const cry=p.cries.latest||p.cries.legacy;if(!cry)return this.createTypeQuestion(p);const truth=Math.random()<.5;let name=p.name;if(!truth){const o=await this.getDifferentPokemon(p.id);if(o)name=o.name;}return{typeLabel:'鳴き声',pokemonId:p.id,pokemonImage:null,pokemonName:p.name,text:`この鳴き声は「${name}」のものである。`,correctAnswer:truth,explanation:`この鳴き声は「${p.name}」のものです。`,cryUrl:cry,isCryQuestion:true};},
-    async createSilhouetteQuestion(p){const truth=Math.random()<.5;let name=p.name;if(!truth){const o=await this.getDifferentPokemon(p.id);if(o)name=o.name;}return{typeLabel:'シルエット',pokemonId:p.id,pokemonImage:p.image,pokemonName:p.name,text:`このシルエットは「${name}」である。`,correctAnswer:truth,explanation:`このポケモンは「${p.name}」です。`,isSilhouetteQuestion:true};},
-    async createShinyQuestion(p){if(!p.shinyImage)return this.createTypeQuestion(p);const truth=Math.random()<.5;let name=p.name;if(!truth){const o=await this.getDifferentPokemon(p.id);if(o)name=o.name;}return{typeLabel:'色ちがい',pokemonId:p.id,pokemonImage:p.shinyImage,pokemonName:p.name,text:`この色ちがいは「${name}」のものである。`,correctAnswer:truth,explanation:`これは「${p.name}」の実際の色ちがい画像です。`,isShinyQuestion:true};},
+    async createSilhouetteQuestion(p){const truth=Math.random()<.5;let name=p.name;if(!truth){const o=await this.getDifferentPokemon(p.id);if(o)name=o.name;}return{typeLabel:'シルエット',pokemonId:p.id,pokemonImage:p.image,pokemonName:p.name,text:`このシルエットは「${name}」である。`,correctAnswer:truth,explanation:`このポケモンは「${p.name}」です。`,isSilhouetteQuestion:true,
+      silhouetteFilter:'brightness(0) contrast(1.2)'};},
+    async createShinyQuestion(p){
+      if(!p.shinyImage || !p.image)return this.createTypeQuestion(p);
 
-    async nextQuestion(){this.answered=false;this.isCorrect=false;try{this.currentQuestion=await this.createUniqueQuestion();this.questionNumber++;}catch(e){console.error(e);this.errorMessage='問題の作成中にエラーが発生しました。';}},
+      const truth=Math.random()<.5;
+
+      if(truth){
+        return{
+          typeLabel:'色ちがい',
+          pokemonId:p.id,
+          pokemonImage:p.shinyImage,
+          pokemonName:p.name,
+          text:`この「${p.name}」の色ちがいは実際に登場する。`,
+          correctAnswer:true,
+          explanation:`「${p.name}」には、この色ちがいが実際に存在します。`,
+          isShinyQuestion:true,
+          shinyFilter:''
+        };
+      }
+
+      const filters=[
+        'hue-rotate(70deg) saturate(1.8)',
+        'hue-rotate(140deg) saturate(1.7)',
+        'hue-rotate(210deg) saturate(1.8)',
+        'hue-rotate(280deg) saturate(1.7)',
+        'hue-rotate(330deg) saturate(1.6)',
+        'saturate(2.2) brightness(1.15)',
+        'hue-rotate(45deg) saturate(1.5) brightness(1.1)',
+        'hue-rotate(180deg) saturate(1.6) brightness(.95)'
+      ];
+      const filter=this.randomItem(filters);
+
+      return{
+        typeLabel:'色ちがい',
+        pokemonId:p.id,
+        pokemonImage:p.image,
+        pokemonName:p.name,
+        text:`この「${p.name}」の色ちがいは実際に登場する。`,
+        correctAnswer:false,
+        explanation:`これは「${p.name}」の通常色に色調整を加えた架空の色ちがいです。実際の色ちがいではありません。`,
+        isShinyQuestion:true,
+        shinyFilter:filter
+      };
+    },
+
+    async nextQuestion(){
+      this.loadingNextQuestion = true;this.answered=false;this.isCorrect=false;try{this.currentQuestion=await this.createUniqueQuestion();this.questionNumber++;}catch(e){console.error(e);this.errorMessage='問題の作成中にエラーが発生しました。';}
+      this.loadingNextQuestion = false;
+    },
     async createUniqueQuestion(){for(let i=0;i<30;i++){const stub=this.randomItem(this.pokemonList),p=await this.fetchPokemon(stub.id),q=await this.createQuestion(p),id=this.getQuestionId(q);if(!this.questionHistory.has(id)){this.questionHistory.add(id);this.questionPokemonHistory.push(p.id);return q;}}throw new Error('新しい問題を作成できませんでした。');},
     getQuestionId(q){return[q.typeLabel,q.pokemonId,q.text,q.cryUrl||'',q.pokemonImage||''].join('|');},
     getPokemonQuestionCount(id){return this.questionPokemonHistory.filter(x=>x===id).length;},

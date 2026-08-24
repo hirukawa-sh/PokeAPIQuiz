@@ -8,6 +8,20 @@
 </head>
 <body>
 <div id="app" class="app">
+    <div
+      v-if="loadingPokemonData"
+      class="loading-pokemon-data"
+      aria-live="polite"
+    >
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div>ポケモンのデータを取得しています…</div>
+    </div>
+
+    <div v-if="loadingNextQuestion" class="loading-next-question" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div>次の問題を読み込み中…</div>
+    </div>
+
   <main class="quiz-container">
 
     <section v-if="screen === 'settings'" class="card settings-card">
@@ -89,7 +103,13 @@
           class="pokemon-image"
           :class="{ silhouette: currentQuestion.isSilhouetteQuestion }"
         >
-          <img :src="currentQuestion.pokemonImage" :alt="currentQuestion.pokemonName">
+          <img :src="currentQuestion.pokemonImage"
+               :alt="currentQuestion.pokemonName"
+               :style="{
+                 filter: currentQuestion.isSilhouetteQuestion && !answered
+                   ? (currentQuestion.silhouetteFilter || 'brightness(0) contrast(1.2)')
+                   : (currentQuestion.shinyFilter || 'none')
+               }">
         </div>
 
         <div v-if="currentQuestion.isCryQuestion" class="cry-player">
