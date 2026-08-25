@@ -24,18 +24,29 @@
 
   <main class="quiz-container">
 
-    <section v-if="screen === 'settings'" class="card settings-card">
+        <section
+      v-if="screen === 'settings'"
+      class="card settings-card"
+    >
       <header class="quiz-header">
         <h1>ポケモン○×クイズ</h1>
         <p>出題範囲を選択してください</p>
       </header>
 
       <div class="settings-actions">
-        <button class="sub-button" @click="selectAll">すべて選択</button>
-        <button class="sub-button" @click="clearAll">すべて解除</button>
+        <button class="sub-button" @click="selectAll">
+          すべて選択
+        </button>
+        <button class="sub-button" @click="clearAll">
+          すべて解除
+        </button>
       </div>
 
-      <section v-for="generation in generations" :key="generation.id" class="generation">
+      <section
+        v-for="generation in generations"
+        :key="generation.id"
+        class="generation"
+      >
         <div class="generation-header">
           <label class="check-row generation-row">
             <input
@@ -44,40 +55,128 @@
               :ref="el => setGenerationCheckboxRef(generation.id, el)"
               @change="toggleGeneration(generation)"
             >
-            <span class="generation-name">{{ generation.name }}</span>
+            <span class="generation-name">
+              {{ generation.name }}
+            </span>
           </label>
+
           <span class="selection-count">
             {{ selectedTitleCount(generation) }}/{{ generation.titles.length }}
           </span>
         </div>
 
         <div class="title-list">
-          <label v-for="title in generation.titles" :key="title.id" class="check-row title-row">
-            <input type="checkbox" v-model="selectedTitles" :value="title.id">
+          <label
+            v-for="title in generation.titles"
+            :key="title.id"
+            class="check-row title-row"
+          >
+            <input
+              type="checkbox"
+              v-model="selectedTitles"
+              :value="title.id"
+            >
             <span>{{ title.name }}</span>
           </label>
         </div>
       </section>
 
       <div class="selected-summary">
-        選択中：<strong>{{ selectedTitles.length }}</strong>タイトル
+        選択中：
+        <strong>{{ selectedTitles.length }}</strong>
+        タイトル
       </div>
 
-      <p v-if="settingsError" class="settings-error">{{ settingsError }}</p>
+      <p v-if="settingsError" class="settings-error">
+        {{ settingsError }}
+      </p>
 
       <button
         class="primary-button start-button"
         :disabled="selectedTitles.length === 0"
-        @click="startQuiz"
+        @click="goToQuestionTypeSelection"
       >
-        クイズ開始
+        次へ
       </button>
+    </section>
+
+    <section
+      v-else-if="screen === 'questionTypes'"
+      class="card settings-card"
+    >
+      <header class="quiz-header">
+        <h1>出題する問題を選択</h1>
+        <p>
+          出題したい問題の種類を選択してください
+        </p>
+      </header>
+
+      <div class="settings-actions">
+        <button
+          class="sub-button"
+          @click="selectAllQuestionTypes"
+        >
+          すべて選択
+        </button>
+
+        <button
+          class="sub-button"
+          @click="clearAllQuestionTypes"
+        >
+          すべて解除
+        </button>
+      </div>
+
+      <div class="question-type-list">
+        <label
+          v-for="type in questionTypes"
+          :key="type.id"
+          class="check-row title-row"
+        >
+          <input
+            type="checkbox"
+            :checked="isQuestionTypeSelected(type.id)"
+            @change="toggleQuestionType(type.id)"
+          >
+          <span>{{ type.name }}</span>
+        </label>
+      </div>
+
+      <div class="selected-summary">
+        選択中：
+        <strong>{{ selectedQuestionTypes.length }}</strong>
+        種類
+      </div>
+
+      <p
+        v-if="selectedQuestionTypes.length === 0"
+        class="settings-error"
+      >
+        少なくとも1種類の問題を選択してください。
+      </p>
+
+      <div class="settings-navigation">
+        <button
+          class="sub-button"
+          @click="screen = 'settings'"
+        >
+          戻る
+        </button>
+
+        <button
+          class="primary-button start-button"
+          :disabled="selectedQuestionTypes.length === 0"
+          @click="startQuiz"
+        >
+          クイズ開始
+        </button>
+      </div>
     </section>
 
     <template v-else>
       <header class="quiz-header">
         <h1>ポケモン○×クイズ</h1>
-        <p>{{ selectedTitles.length }}タイトルから出題</p>
+        <p>{{ selectedTitles.length }}タイトル・{{ selectedQuestionTypes.length }}種類から出題</p>
       </header>
 
       <section v-if="loading" class="card status-card">

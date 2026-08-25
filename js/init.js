@@ -183,12 +183,44 @@ const generationDefinitions = [
   },
 ];
 
+const questionTypeDefinitions = [
+  {
+    id: "name",
+    name: "ポケモン名"
+  },
+  {
+    id: "type",
+    name: "タイプ"
+  },
+  {
+    id: "ability",
+    name: "とくせい"
+  },
+  {
+    id: "move",
+    name: "おぼえるわざ"
+  },
+  {
+    id: "cry",
+    name: "鳴き声"
+  },
+  {
+    id: "silhouette",
+    name: "シルエット"
+  },
+  {
+    id: "shiny",
+    name: "色ちがい"
+  }
+];
+
 const pokemonCache = new Map();
 const speciesCache = new Map();
 const moveCache = new Map();
 const versionPokemonCache = new Map();
 
 export {
+  questionTypeDefinitions,
   API_BASE,
   generationDefinitions,
   pokemonCache,
@@ -198,6 +230,44 @@ export {
 };
 
 export const initMethods = {
+  isQuestionTypeSelected(typeId) {
+    return this.selectedQuestionTypes.includes(typeId);
+  },
+
+  toggleQuestionType(typeId) {
+    if (this.selectedQuestionTypes.includes(typeId)) {
+      this.selectedQuestionTypes =
+        this.selectedQuestionTypes.filter(id => id !== typeId);
+    }
+else {
+      this.selectedQuestionTypes = [
+        ...this.selectedQuestionTypes,
+        typeId
+      ];
+    }
+  },
+
+  selectAllQuestionTypes() {
+    this.selectedQuestionTypes =
+      this.questionTypes.map(type => type.id);
+  },
+
+  clearAllQuestionTypes() {
+    this.selectedQuestionTypes = [];
+  },
+
+  goToQuestionTypeSelection() {
+    if (!this.selectedTitles.length) {
+      this.settingsError =
+        "少なくとも1つの出題範囲を選択してください。";
+      return;
+    }
+
+    this.settingsError = "";
+    this.screen = "questionTypes";
+  },
+
+
   setGenerationCheckboxRef(id, el) {
     if (el) {
       this.generationCheckboxRefs[id] = el;
@@ -237,7 +307,7 @@ export const initMethods = {
         id => !ids.includes(id)
       );
     }
-    else {
+else {
       this.selectedTitles = [
         ...new Set([
           ...this.selectedTitles,
@@ -304,12 +374,12 @@ export const initMethods = {
 
       await this.nextQuestion();
     }
-    catch (error) {
+catch (error) {
       console.error("Data loading error:", error);
       this.errorMessage =
         error.message || "データ取得エラーが発生しました。";
     }
-    finally {
+finally {
       this.loadingPokemonData = false;
       this.loading = false;
     }

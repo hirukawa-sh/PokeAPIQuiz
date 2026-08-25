@@ -1,31 +1,40 @@
-import {
-  initMethods
-} from "./init.js";
-
 export const questionMethods = {
   async createQuestion(pokemon) {
-    const number = Math.floor(Math.random() * 7);
+    const selectedTypes = this.selectedQuestionTypes || [
+      "name",
+      "type",
+      "ability",
+      "move",
+      "cry",
+      "silhouette",
+      "shiny"
+    ];
 
-    if (number === 0) {
+    const type = this.randomItem(selectedTypes);
+
+    if (type === "name") {
       return await this.createNameQuestion(pokemon);
     }
-    else if (number === 1) {
+    else if (type === "type") {
       return await this.createTypeQuestion(pokemon);
     }
-    else if (number === 2) {
+    else if (type === "ability") {
       return await this.createAbilityQuestion(pokemon);
     }
-    else if (number === 3) {
+    else if (type === "move") {
       return await this.createMoveQuestion(pokemon);
     }
-    else if (number === 4) {
+    else if (type === "cry") {
       return await this.createCryQuestion(pokemon);
     }
-    else if (number === 5) {
+    else if (type === "silhouette") {
       return await this.createSilhouetteQuestion(pokemon);
     }
+    else if (type === "shiny") {
+      return await this.createShinyQuestion(pokemon);
+    }
 
-    return await this.createShinyQuestion(pokemon);
+    return await this.createNameQuestion(pokemon);
   },
 
   async createNameQuestion(pokemon) {
@@ -306,12 +315,12 @@ export const questionMethods = {
         await this.createUniqueQuestion();
       this.questionNumber++;
     }
-    catch (error) {
+catch (error) {
       console.error(error);
       this.errorMessage =
         "問題の作成中にエラーが発生しました。";
     }
-    finally {
+finally {
       this.loadingNextQuestion = false;
     }
   },
@@ -322,6 +331,14 @@ export const questionMethods = {
       const pokemon = await this.fetchPokemon(stub.id);
       const question = await this.createQuestion(pokemon);
       const id = this.getQuestionId(question);
+
+      if (
+        !this.selectedQuestionTypes.includes(
+          this.getQuestionTypeId(question)
+        )
+      ) {
+        continue;
+      }
 
       if (!this.questionHistory.has(id)) {
         this.questionHistory.add(id);
@@ -334,6 +351,20 @@ export const questionMethods = {
     throw new Error(
       "新しい問題を作成できませんでした。"
     );
+  },
+
+  getQuestionTypeId(question) {
+    const map = {
+      "ポケモン名": "name",
+      "タイプ": "type",
+      "とくせい": "ability",
+      "おぼえるわざ": "move",
+      "鳴き声": "cry",
+      "シルエット": "silhouette",
+      "色ちがい": "shiny"
+    };
+
+    return map[question.typeLabel] || "";
   },
 
   getQuestionId(question) {

@@ -1,5 +1,6 @@
 import {
-  generationDefinitions
+  generationDefinitions,
+  questionTypeDefinitions
 } from "./init.js";
 
 import {
@@ -19,6 +20,8 @@ createApp({
       loadingNextQuestion: false,
       screen: "settings",
       generations: generationDefinitions,
+      questionTypes: questionTypeDefinitions,
+      selectedQuestionTypes: questionTypeDefinitions.map(type => type.id),
       selectedTitles: [
         "red-blue",
         "yellow"
