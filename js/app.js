@@ -13,15 +13,17 @@ import {
 
 const { createApp } = Vue;
 
-createApp({
+const app = createApp({
   data() {
     return {
       loadingPokemonData: false,
       loadingNextQuestion: false,
-      screen: "settings",
+      screen: "title",
+      gameMode: null,
       generations: generationDefinitions,
       questionTypes: questionTypeDefinitions,
       selectedQuestionTypes: questionTypeDefinitions.map(type => type.id),
+      comparisonDifficulty: "intermediate",
       selectedTitles: [
         "red-blue",
         "yellow"
@@ -43,6 +45,7 @@ createApp({
   },
 
   mounted() {
+    this.startBackgroundAnimation();
     this.$nextTick(() => {
       this.generations.forEach(
         generation =>
@@ -52,6 +55,43 @@ createApp({
   },
 
   methods: {
+    startBackgroundAnimation() {
+      if (
+        window.BackgroundAnimation &&
+        typeof window.BackgroundAnimation.start === "function"
+      ) {
+        window.BackgroundAnimation.start();
+      }
+    },
+
+    stopBackgroundAnimation() {
+      if (
+        window.BackgroundAnimation &&
+        typeof window.BackgroundAnimation.stop === "function"
+      ) {
+        window.BackgroundAnimation.stop();
+      }
+    },
+
+
+
+
+    selectFreeMode() {
+      this.gameMode = "free";
+      this.screen = "settings";
+    },
+
+    selectCertificationMode() {
+      this.gameMode = "certification";
+      this.screen = "certificationLevels";
+    },
+
+    returnToTitle() {
+      this.gameMode = null;
+      this.screen = "title";
+    },
+
+
     ...initMethods,
     ...questionMethods,
 
@@ -59,4 +99,6 @@ createApp({
       this.screen = "settings";
     }
   }
-}).mount("#app");
+});
+
+app.mount("#app");

@@ -33,6 +33,12 @@ export const questionMethods = {
     else if (type === "shiny") {
       return await this.createShinyQuestion(pokemon);
     }
+    else if (type === "heightComparison") {
+      return await this.createHeightComparisonQuestion(pokemon);
+    }
+    else if (type === "weightComparison") {
+      return await this.createWeightComparisonQuestion(pokemon);
+    }
 
     return await this.createNameQuestion(pokemon);
   },
@@ -305,6 +311,123 @@ export const questionMethods = {
     };
   },
 
+  async getComparisonPokemon(pokemon, property) {
+    const difficulty = this.comparisonDifficulty || "intermediate";
+    const ranges = {
+      heightComparison: {
+        beginner: { min: 10, max: Infinity },
+        intermediate: { min: 2, max: 5 },
+        advanced: { min: 1, max: 3 }
+      },
+      weightComparison: {
+        beginner: { min: 50, max: Infinity },
+        intermediate: { min: 20, max: 50 },
+        advanced: { min: 0.1, max: 10 }
+      }
+    };
+
+    const range = ranges[property]?.[difficulty] ||
+      ranges[property].intermediate;
+
+    const candidates = this.shuffleArray(
+      this.pokemonList.filter(item => item.id !== pokemon.id)
+    );
+
+    for (const stub of candidates.slice(0, 40)) {
+      const other = await this.fetchPokemon(stub.id);
+
+      const valueKey = property === "heightComparison"
+        ? "height"
+        : "weight";
+
+      if (other[valueKey] == null || pokemon[valueKey] == null) {
+        continue;
+      }
+
+      const a = pokemon[valueKey] / 10;
+      const b = other[valueKey] / 10;
+      const difference = Math.abs(a - b);
+
+      if (difference >= range.min && difference <= range.max) {
+        return other;
+      }
+    }
+
+    return null;
+  },
+
+  async createHeightComparisonQuestion(pokemon) {
+    const other = await this.getComparisonPokemon(
+      pokemon,
+      "heightComparison"
+    );
+
+    if (!other) {
+      return this.createTypeQuestion(pokemon);
+    }
+
+    // 左側を小さい方、右側を大きい方に固定します。
+    const leftPokemon = pokemon.height <= other.height ? pokemon : other;
+    const rightPokemon = pokemon.height <= other.height ? other : pokemon;
+
+    // 問題文だけをランダムに反転させます。
+    // 画像の配置は常に「小さい → ＜ → 大きい」のままです。
+    const rightIsSmallerStatement = Math.random() < 0.5;
+
+    return {
+      typeLabel: "身長比較",
+      pokemonId: leftPokemon.id,
+      pokemonImage: leftPokemon.image,
+      pokemonName: leftPokemon.name,
+      comparisonPokemonId: rightPokemon.id,
+      comparisonPokemonImage: rightPokemon.image,
+      comparisonPokemonName: rightPokemon.name,
+      text: rightIsSmallerStatement
+        ? `右の「${rightPokemon.name}」の方が小さい。`
+        : `右の「${rightPokemon.name}」の方が大きい。`,
+      correctAnswer: !rightIsSmallerStatement,
+      explanation: `左の「${leftPokemon.name}」の方が小さいです。${leftPokemon.name}は${(leftPokemon.height / 10).toFixed(1)}メートル、${rightPokemon.name}は${(rightPokemon.height / 10).toFixed(1)}メートルです。`,
+      isComparisonQuestion: true,
+      comparisonOperator: "<"
+    };
+  },
+
+  async createWeightComparisonQuestion(pokemon) {
+    const other = await this.getComparisonPokemon(
+      pokemon,
+      "weightComparison"
+    );
+
+    if (!other) {
+      return this.createTypeQuestion(pokemon);
+    }
+
+    // 左側を軽い方、右側を重い方に固定します。
+    const leftPokemon = pokemon.weight <= other.weight ? pokemon : other;
+    const rightPokemon = pokemon.weight <= other.weight ? other : pokemon;
+
+    // 問題文だけをランダムに反転させます。
+    // 画像の配置は常に「軽い → ＜ → 重い」のままです。
+    const rightIsLighterStatement = Math.random() < 0.5;
+
+    return {
+      typeLabel: "体重比較",
+      pokemonId: leftPokemon.id,
+      pokemonImage: leftPokemon.image,
+      pokemonName: leftPokemon.name,
+      comparisonPokemonId: rightPokemon.id,
+      comparisonPokemonImage: rightPokemon.image,
+      comparisonPokemonName: rightPokemon.name,
+      text: rightIsLighterStatement
+        ? `右の「${rightPokemon.name}」の方が軽い。`
+        : `右の「${rightPokemon.name}」の方が重い。`,
+      correctAnswer: !rightIsLighterStatement,
+      explanation: `左の「${leftPokemon.name}」の方が軽いです。${leftPokemon.name}は${(leftPokemon.weight / 10).toFixed(1)}kg、${rightPokemon.name}は${(rightPokemon.weight / 10).toFixed(1)}kgです。`,
+      isComparisonQuestion: true,
+      comparisonOperator: "<"
+    };
+  },
+
   async nextQuestion() {
     this.loadingNextQuestion = true;
     this.answered = false;
@@ -361,7 +484,9 @@ finally {
       "おぼえるわざ": "move",
       "鳴き声": "cry",
       "シルエット": "silhouette",
-      "色ちがい": "shiny"
+      "色ちがい": "shiny",
+      "身長比較": "heightComparison",
+      "体重比較": "weightComparison"
     };
 
     return map[question.typeLabel] || "";

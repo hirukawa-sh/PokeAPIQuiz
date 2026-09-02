@@ -211,6 +211,14 @@ const questionTypeDefinitions = [
   {
     id: "shiny",
     name: "色ちがい"
+  },
+  {
+    id: "heightComparison",
+    name: "身長比較"
+  },
+  {
+    id: "weightComparison",
+    name: "体重比較"
   }
 ];
 
@@ -469,6 +477,8 @@ finally {
       shinyImage:
         data.sprites?.other?.["official-artwork"]?.front_shiny ||
         data.sprites?.front_shiny,
+      height: data.height,
+      weight: data.weight,
       cries: {
         latest: data.cries?.latest || null,
         legacy: data.cries?.legacy || null

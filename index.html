@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ポケモン○×クイズ</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/background.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="pastel-yellow-theme">
 <div id="app" class="app">
+
     <div
       v-if="loadingPokemonData"
       class="loading-pokemon-data"
@@ -25,7 +27,56 @@
   <main class="quiz-container">
 
         <section
-      v-if="screen === 'settings'"
+      v-if="screen === 'title'"
+      class="card title-card"
+    >
+      <header class="quiz-header">
+        <h1>ポケモン○×クイズ</h1>
+        <p>モードを選択してください</p>
+      </header>
+
+      <div class="mode-menu">
+        <button
+          class="primary-button mode-button"
+          @click="selectFreeMode"
+        >
+          フリーモード
+        </button>
+
+        <button
+          class="primary-button mode-button"
+          @click="selectCertificationMode"
+        >
+          検定モード
+        </button>
+      </div>
+    </section>
+
+    <section
+      v-else-if="screen === 'certificationLevels'"
+      class="card settings-card"
+    >
+      <header class="quiz-header">
+        <h1>検定モード</h1>
+        <p>検定モードは今後実装予定です</p>
+      </header>
+
+      <div class="certification-level-list">
+        <button class="sub-button mode-button" disabled>初級</button>
+        <button class="sub-button mode-button" disabled>中級</button>
+        <button class="sub-button mode-button" disabled>上級</button>
+      </div>
+
+      <button
+        class="sub-button"
+        @click="returnToTitle"
+      >
+        タイトルへ戻る
+      </button>
+    </section>
+
+    <section
+      v-else-if="screen === 'settings'"
       class="card settings-card"
     >
       <header class="quiz-header">
@@ -173,7 +224,7 @@
       </div>
     </section>
 
-    <template v-else>
+    <template v-else-if="screen === 'quiz'">
       <header class="quiz-header">
         <h1>ポケモン○×クイズ</h1>
         <p>{{ selectedTitles.length }}タイトル・{{ selectedQuestionTypes.length }}種類から出題</p>
@@ -198,7 +249,32 @@
         <div class="question-type">{{ currentQuestion.typeLabel }}</div>
 
         <div
-          v-if="currentQuestion.pokemonImage"
+          v-if="currentQuestion.isComparisonQuestion"
+          class="comparison-area"
+        >
+          <div class="comparison-images">
+            <div class="comparison-pokemon">
+              <img
+                :src="currentQuestion.pokemonImage"
+                :alt="currentQuestion.pokemonName"
+              >
+              <span>{{ currentQuestion.pokemonName }}</span>
+            </div>
+
+            <div class="comparison-operator">&lt;</div>
+
+            <div class="comparison-pokemon">
+              <img
+                :src="currentQuestion.comparisonPokemonImage"
+                :alt="currentQuestion.comparisonPokemonName"
+              >
+              <span>{{ currentQuestion.comparisonPokemonName }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-else-if="currentQuestion.pokemonImage"
           class="pokemon-image"
           :class="{ silhouette: currentQuestion.isSilhouetteQuestion }"
         >
@@ -242,6 +318,7 @@
 </div>
 
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script type="module" src="js/app.js"></script>
+<script src="js/background.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
