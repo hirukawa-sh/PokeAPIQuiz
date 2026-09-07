@@ -274,7 +274,14 @@
         </div>
 
         <div
-          v-else-if="currentQuestion.pokemonImage"
+          v-if="currentQuestion.dexDescription"
+          class="dex-description"
+        >
+          「{{ currentQuestion.dexDescription }}」
+        </div>
+
+        <div
+          v-else-if="!currentQuestion.isComparisonQuestion && currentQuestion.pokemonImage"
           class="pokemon-image"
           :class="{ silhouette: currentQuestion.isSilhouetteQuestion }"
         >
@@ -304,6 +311,17 @@
             {{ isCorrect ? '正解！' : '不正解…' }}
           </div>
           <p class="answer-explanation">{{ currentQuestion.explanation }}</p>
+
+          <div
+            v-if="currentQuestion.dexDescription && currentQuestion.pokemonImage"
+            class="pokemon-image dex-answer-image"
+          >
+            <img
+              :src="currentQuestion.pokemonImage"
+              :alt="currentQuestion.pokemonName"
+            >
+          </div>
+
           <button class="primary-button next-button" @click="nextQuestion">次の問題</button>
         </div>
 

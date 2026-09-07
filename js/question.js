@@ -2,6 +2,7 @@ export const questionMethods = {
   async createQuestion(pokemon) {
     const selectedTypes = this.selectedQuestionTypes || [
       "name",
+      "dex",
       "type",
       "ability",
       "move",
@@ -14,6 +15,9 @@ export const questionMethods = {
 
     if (type === "name") {
       return await this.createNameQuestion(pokemon);
+    }
+    else if (type === "dex") {
+      return await this.createDexQuestion(pokemon);
     }
     else if (type === "type") {
       return await this.createTypeQuestion(pokemon);
@@ -63,6 +67,38 @@ export const questionMethods = {
       text: `このポケモンは「${name}」である。`,
       correctAnswer: name === pokemon.name,
       explanation: `このポケモンは「${pokemon.name}」です。`
+    };
+  },
+
+  async createDexQuestion(pokemon) {
+    const description = await this.fetchJapaneseFlavorText(pokemon.id);
+
+    if (!description) {
+      return this.createNameQuestion(pokemon);
+    }
+
+    const truth = Math.random() < 0.5;
+    let name = pokemon.name;
+
+    if (!truth) {
+      const other = await this.getDifferentPokemon(pokemon.id);
+
+      if (other) {
+        name = other.name;
+      }
+    }
+
+    const correctAnswer = name === pokemon.name;
+
+    return {
+      typeLabel: "図鑑クイズ",
+      pokemonId: pokemon.id,
+      pokemonImage: pokemon.image,
+      pokemonName: pokemon.name,
+      dexDescription: description,
+      text: `このポケモンは、「${name}」である。`,
+      correctAnswer,
+      explanation: `この図鑑説明文は「${pokemon.name}」のものです。`
     };
   },
 
@@ -479,6 +515,7 @@ finally {
   getQuestionTypeId(question) {
     const map = {
       "ポケモン名": "name",
+      "図鑑クイズ": "dex",
       "タイプ": "type",
       "とくせい": "ability",
       "おぼえるわざ": "move",

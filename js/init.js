@@ -193,6 +193,10 @@ const questionTypeDefinitions = [
     name: "タイプ"
   },
   {
+    id: "dex",
+    name: "図鑑クイズ"
+  },
+  {
     id: "ability",
     name: "とくせい"
   },
@@ -224,6 +228,7 @@ const questionTypeDefinitions = [
 
 const pokemonCache = new Map();
 const speciesCache = new Map();
+const speciesDataCache = new Map();
 const moveCache = new Map();
 const versionPokemonCache = new Map();
 
@@ -233,6 +238,7 @@ export {
   generationDefinitions,
   pokemonCache,
   speciesCache,
+  speciesDataCache,
   moveCache,
   versionPokemonCache
 };
@@ -497,8 +503,15 @@ finally {
   },
 
   async fetchJapaneseName(id) {
-    if (speciesCache.has(id)) {
-      return speciesCache.get(id);
+    const data = await this.fetchSpeciesData(id);
+    return data.names?.find(
+      item => item.language.name === "ja"
+    )?.name || data.name;
+  },
+
+  async fetchSpeciesData(id) {
+    if (speciesDataCache.has(id)) {
+      return speciesDataCache.get(id);
     }
 
     const response = await fetch(
@@ -512,14 +525,33 @@ finally {
     }
 
     const data = await response.json();
+    speciesDataCache.set(id, data);
+
     const name =
       data.names?.find(
         item => item.language.name === "ja"
       )?.name || data.name;
-
     speciesCache.set(id, name);
 
-    return name;
+    return data;
+  },
+
+  async fetchJapaneseFlavorText(id) {
+    const data = await this.fetchSpeciesData(id);
+    const entries = (data.flavor_text_entries || []).filter(
+      entry => entry.language?.name === "ja"
+    );
+
+    if (!entries.length) {
+      return null;
+    }
+
+    // 改行・ページ区切り文字を整えて表示します。
+    const entry = this.randomItem(entries);
+    return entry.flavor_text
+      .replace(/[\n\f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   },
 
   async fetchJapaneseMoveName(id) {
