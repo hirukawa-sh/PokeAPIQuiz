@@ -58,21 +58,23 @@
     >
       <header class="quiz-header">
         <h1>検定モード</h1>
-        <p>検定モードは今後実装予定です</p>
+        <p>10秒以内に答えてください。正解率70%以上で合格です。</p>
       </header>
 
       <div class="certification-level-list">
-        <button class="sub-button mode-button" disabled>初級</button>
-        <button class="sub-button mode-button" disabled>中級</button>
-        <button class="sub-button mode-button" disabled>上級</button>
+        <button class="sub-button mode-button" @click="startCertification('beginner')">初級（30問）</button>
+        <button class="sub-button mode-button" @click="startCertification('intermediate')">中級（50問）</button>
+        <button class="sub-button mode-button" @click="startCertification('advanced')">上級（100問）</button>
       </div>
 
-      <button
-        class="sub-button"
-        @click="returnToTitle"
-      >
-        タイトルへ戻る
-      </button>
+      <div class="certification-back-to-title">
+        <button
+          class="sub-button"
+          @click="returnToTitle"
+        >
+          タイトルへ戻る
+        </button>
+      </div>
     </section>
 
     <section
@@ -149,6 +151,15 @@
       >
         次へ
       </button>
+
+      <div class="settings-back-to-title">
+        <button
+          class="sub-button"
+          @click="returnToTitle"
+        >
+          タイトルに戻る
+        </button>
+      </div>
     </section>
 
     <section
@@ -224,6 +235,24 @@
       </div>
     </section>
 
+    <section
+      v-else-if="screen === 'certificationResult'"
+      class="card status-card certification-result-card"
+    >
+      <header class="quiz-header">
+        <h1>検定結果</h1>
+        <p>{{ certificationLevelName }}</p>
+      </header>
+      <div class="certification-result-score">
+        <strong>{{ score }} / {{ certificationQuestionCount }}</strong>
+        <span>正解率 {{ Math.round((score / certificationQuestionCount) * 100) }}%</span>
+      </div>
+      <div class="certification-result-message" :class="{ passed: (score / certificationQuestionCount) >= 0.7 }">
+        {{ (score / certificationQuestionCount) >= 0.7 ? '合格！' : '不合格' }}
+      </div>
+      <button class="primary-button start-button" @click="returnToTitle">タイトルへ戻る</button>
+    </section>
+
     <template v-else-if="screen === 'quiz'">
       <header class="quiz-header">
         <h1>ポケモン○×クイズ</h1>
@@ -243,7 +272,8 @@
       <section v-else class="card">
         <div class="quiz-info">
           <span>問題 {{ questionNumber }}</span>
-          <span>正解 {{ score }} / {{ answeredCount }}</span>
+          <span v-if="gameMode === 'certification'">残り {{ timerSeconds }}秒</span>
+          <span v-else>正解 {{ score }} / {{ answeredCount }}</span>
         </div>
 
         <div class="question-type">{{ currentQuestion.typeLabel }}</div>
@@ -274,10 +304,10 @@
         </div>
 
         <div
-          v-if="currentQuestion.dexDescription"
+          v-if="currentQuestion.isDexQuestion && currentQuestion.flavorText"
           class="dex-description"
         >
-          「{{ currentQuestion.dexDescription }}」
+          「{{ currentQuestion.flavorText }}」
         </div>
 
         <div
@@ -308,24 +338,29 @@
 
         <div v-else class="result-area">
           <div class="result-message" :class="{ correct: isCorrect, incorrect: !isCorrect }">
-            {{ isCorrect ? '正解！' : '不正解…' }}
+            {{ timeoutOccurred ? '時間切れ！' : (isCorrect ? '正解！' : '不正解…') }}
           </div>
           <p class="answer-explanation">{{ currentQuestion.explanation }}</p>
-
-          <div
-            v-if="currentQuestion.dexDescription && currentQuestion.pokemonImage"
-            class="pokemon-image dex-answer-image"
-          >
-            <img
-              :src="currentQuestion.pokemonImage"
-              :alt="currentQuestion.pokemonName"
-            >
+          <div v-if="currentQuestion.isDexQuestion && currentQuestion.pokemonImage" class="pokemon-image dex-answer-image">
+            <img :src="currentQuestion.pokemonImage" :alt="currentQuestion.pokemonName">
           </div>
-
-          <button class="primary-button next-button" @click="nextQuestion">次の問題</button>
+          <button
+            v-if="gameMode !== 'certification' || !certificationFinished"
+            class="primary-button next-button"
+            @click="nextQuestion"
+          >次の問題</button>
+          <button
+            v-else
+            class="primary-button next-button"
+            @click="screen = 'certificationResult'"
+          >結果を見る</button>
         </div>
 
-        <button class="settings-link" @click="backToSettings">出題範囲を変更</button>
+        <button
+          v-if="gameMode !== 'certification'"
+          class="settings-link"
+          @click="backToSettings"
+        >出題範囲を変更</button>
       </section>
 
       <footer class="footer">

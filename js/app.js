@@ -20,6 +20,14 @@ const app = createApp({
       loadingNextQuestion: false,
       screen: "title",
       gameMode: null,
+      certificationLevel: null,
+      certificationLevelName: "",
+      certificationQuestionCount: 0,
+      certificationQuestionTypes: [],
+      certificationFinished: false,
+      timerSeconds: 10,
+      timerId: null,
+      timeoutOccurred: false,
       generations: generationDefinitions,
       questionTypes: questionTypeDefinitions,
       selectedQuestionTypes: questionTypeDefinitions.map(type => type.id),
@@ -87,7 +95,9 @@ const app = createApp({
     },
 
     returnToTitle() {
+      this.stopQuestionTimer();
       this.gameMode = null;
+      this.certificationFinished = false;
       this.screen = "title";
     },
 
@@ -96,6 +106,7 @@ const app = createApp({
     ...questionMethods,
 
     backToSettings() {
+      this.stopQuestionTimer();
       this.screen = "settings";
     }
   }

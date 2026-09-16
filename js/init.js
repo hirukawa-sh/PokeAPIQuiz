@@ -193,10 +193,6 @@ const questionTypeDefinitions = [
     name: "タイプ"
   },
   {
-    id: "dex",
-    name: "図鑑クイズ"
-  },
-  {
     id: "ability",
     name: "とくせい"
   },
@@ -223,12 +219,15 @@ const questionTypeDefinitions = [
   {
     id: "weightComparison",
     name: "体重比較"
+  },
+  {
+    id: "dex",
+    name: "図鑑クイズ"
   }
 ];
 
 const pokemonCache = new Map();
 const speciesCache = new Map();
-const speciesDataCache = new Map();
 const moveCache = new Map();
 const versionPokemonCache = new Map();
 
@@ -238,7 +237,6 @@ export {
   generationDefinitions,
   pokemonCache,
   speciesCache,
-  speciesDataCache,
   moveCache,
   versionPokemonCache
 };
@@ -355,7 +353,49 @@ else {
     return [...array].sort(() => Math.random() - 0.5);
   },
 
-  async startQuiz() {
+  async startCertification(level) {
+    const settings = {
+      beginner: {
+        name: "初級",
+        count: 30,
+        types: ["name", "silhouette", "shiny", "dex"]
+      },
+      intermediate: {
+        name: "中級",
+        count: 50,
+        types: ["name", "silhouette", "shiny", "dex", "cry", "heightComparison", "weightComparison"]
+      },
+      advanced: {
+        name: "上級",
+        count: 100,
+        types: this.questionTypes.map(type => type.id)
+      }
+    };
+
+    const config = settings[level];
+    if (!config) {
+      return;
+    }
+
+    this.selectedTitles = this.generations.flatMap(
+      generation => generation.titles.map(title => title.id)
+    );
+
+    this.certificationLevel = level;
+    this.certificationLevelName = config.name;
+    this.certificationQuestionCount = config.count;
+    this.certificationQuestionTypes = [...config.types];
+    this.selectedQuestionTypes = [...config.types];
+    this.comparisonDifficulty = level === "beginner"
+      ? "beginner"
+      : level === "advanced"
+        ? "advanced"
+        : "intermediate";
+
+    await this.startQuiz(true);
+  },
+
+  async startQuiz(isCertification = false) {
     if (!this.selectedTitles.length) {
       this.settingsError =
         "少なくとも1つの出題範囲を選択してください。";
@@ -374,6 +414,10 @@ else {
     this.score = 0;
     this.answeredCount = 0;
     this.answered = false;
+    this.timerSeconds = 10;
+    this.timerId = null;
+    this.certificationFinished = false;
+    this.errorMessage = "";
 
     try {
       const ids = await this.fetchSelectedPokemonIds();
@@ -387,6 +431,9 @@ else {
       this.pokemonList = this.shuffleArray(ids).map(id => ({ id }));
 
       await this.nextQuestion();
+      if (isCertification) {
+        this.startQuestionTimer();
+      }
     }
 catch (error) {
       console.error("Data loading error:", error);
@@ -473,6 +520,7 @@ finally {
 
     const data = await response.json();
     const name = await this.fetchJapaneseName(id);
+    const species = await this.fetchJapaneseSpecies(id);
 
     const pokemon = {
       id,
@@ -485,6 +533,7 @@ finally {
         data.sprites?.front_shiny,
       height: data.height,
       weight: data.weight,
+      flavorText: species.flavorText,
       cries: {
         latest: data.cries?.latest || null,
         legacy: data.cries?.legacy || null
@@ -502,16 +551,37 @@ finally {
     return pokemon;
   },
 
-  async fetchJapaneseName(id) {
-    const data = await this.fetchSpeciesData(id);
-    return data.names?.find(
-      item => item.language.name === "ja"
-    )?.name || data.name;
+  async fetchJapaneseSpecies(id) {
+    if (speciesCache.has(`species:${id}`)) {
+      return speciesCache.get(`species:${id}`);
+    }
+
+    const response = await fetch(
+      `${API_BASE}/pokemon-species/${id}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Species API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const entry = (data.flavor_text_entries || []).find(
+      item => item.language?.name === "ja"
+    );
+
+    const result = {
+      flavorText: entry
+        ? entry.flavor_text.replace(/[\n\f\r]/g, " ").replace(/\s+/g, " ").trim()
+        : ""
+    };
+
+    speciesCache.set(`species:${id}`, result);
+    return result;
   },
 
-  async fetchSpeciesData(id) {
-    if (speciesDataCache.has(id)) {
-      return speciesDataCache.get(id);
+  async fetchJapaneseName(id) {
+    if (speciesCache.has(id)) {
+      return speciesCache.get(id);
     }
 
     const response = await fetch(
@@ -525,33 +595,14 @@ finally {
     }
 
     const data = await response.json();
-    speciesDataCache.set(id, data);
-
     const name =
       data.names?.find(
         item => item.language.name === "ja"
       )?.name || data.name;
+
     speciesCache.set(id, name);
 
-    return data;
-  },
-
-  async fetchJapaneseFlavorText(id) {
-    const data = await this.fetchSpeciesData(id);
-    const entries = (data.flavor_text_entries || []).filter(
-      entry => entry.language?.name === "ja"
-    );
-
-    if (!entries.length) {
-      return null;
-    }
-
-    // 改行・ページ区切り文字を整えて表示します。
-    const entry = this.randomItem(entries);
-    return entry.flavor_text
-      .replace(/[\n\f]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    return name;
   },
 
   async fetchJapaneseMoveName(id) {

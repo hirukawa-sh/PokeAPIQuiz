@@ -2,7 +2,6 @@ export const questionMethods = {
   async createQuestion(pokemon) {
     const selectedTypes = this.selectedQuestionTypes || [
       "name",
-      "dex",
       "type",
       "ability",
       "move",
@@ -15,9 +14,6 @@ export const questionMethods = {
 
     if (type === "name") {
       return await this.createNameQuestion(pokemon);
-    }
-    else if (type === "dex") {
-      return await this.createDexQuestion(pokemon);
     }
     else if (type === "type") {
       return await this.createTypeQuestion(pokemon);
@@ -43,6 +39,9 @@ export const questionMethods = {
     else if (type === "weightComparison") {
       return await this.createWeightComparisonQuestion(pokemon);
     }
+    else if (type === "dex") {
+      return await this.createDexQuestion(pokemon);
+    }
 
     return await this.createNameQuestion(pokemon);
   },
@@ -67,38 +66,6 @@ export const questionMethods = {
       text: `このポケモンは「${name}」である。`,
       correctAnswer: name === pokemon.name,
       explanation: `このポケモンは「${pokemon.name}」です。`
-    };
-  },
-
-  async createDexQuestion(pokemon) {
-    const description = await this.fetchJapaneseFlavorText(pokemon.id);
-
-    if (!description) {
-      return this.createNameQuestion(pokemon);
-    }
-
-    const truth = Math.random() < 0.5;
-    let name = pokemon.name;
-
-    if (!truth) {
-      const other = await this.getDifferentPokemon(pokemon.id);
-
-      if (other) {
-        name = other.name;
-      }
-    }
-
-    const correctAnswer = name === pokemon.name;
-
-    return {
-      typeLabel: "図鑑クイズ",
-      pokemonId: pokemon.id,
-      pokemonImage: pokemon.image,
-      pokemonName: pokemon.name,
-      dexDescription: description,
-      text: `このポケモンは、「${name}」である。`,
-      correctAnswer,
-      explanation: `この図鑑説明文は「${pokemon.name}」のものです。`
     };
   },
 
@@ -347,6 +314,34 @@ export const questionMethods = {
     };
   },
 
+  async createDexQuestion(pokemon) {
+    if (!pokemon.flavorText) {
+      return this.createNameQuestion(pokemon);
+    }
+
+    const truth = Math.random() < 0.5;
+    let name = pokemon.name;
+
+    if (!truth) {
+      const other = await this.getDifferentPokemon(pokemon.id);
+      if (other) {
+        name = other.name;
+      }
+    }
+
+    return {
+      typeLabel: "図鑑クイズ",
+      pokemonId: pokemon.id,
+      pokemonImage: pokemon.image,
+      pokemonName: pokemon.name,
+      text: `このポケモンは、「${name}」である。`,
+      flavorText: pokemon.flavorText,
+      correctAnswer: name === pokemon.name,
+      explanation: `この図鑑説明文は「${pokemon.name}」のものです。`,
+      isDexQuestion: true
+    };
+  },
+
   async getComparisonPokemon(pokemon, property) {
     const difficulty = this.comparisonDifficulty || "intermediate";
     const ranges = {
@@ -465,22 +460,71 @@ export const questionMethods = {
   },
 
   async nextQuestion() {
+    if (this.certificationFinished) {
+      return;
+    }
+
     this.loadingNextQuestion = true;
     this.answered = false;
     this.isCorrect = false;
+    this.stopQuestionTimer();
 
     try {
-      this.currentQuestion =
-        await this.createUniqueQuestion();
+      this.currentQuestion = await this.createUniqueQuestion();
       this.questionNumber++;
     }
-catch (error) {
+    catch (error) {
       console.error(error);
-      this.errorMessage =
-        "問題の作成中にエラーが発生しました。";
+      this.errorMessage = "問題の作成中にエラーが発生しました。";
     }
-finally {
+    finally {
       this.loadingNextQuestion = false;
+      if (this.gameMode === "certification" && this.currentQuestion) {
+        this.startQuestionTimer();
+      }
+    }
+  },
+
+  startQuestionTimer() {
+    this.stopQuestionTimer();
+    if (this.gameMode !== "certification" || this.answered || !this.currentQuestion) {
+      return;
+    }
+
+    this.timerSeconds = 10;
+    this.timerId = window.setInterval(() => {
+      if (this.answered) {
+        this.stopQuestionTimer();
+        return;
+      }
+
+      this.timerSeconds--;
+      if (this.timerSeconds <= 0) {
+        this.stopQuestionTimer();
+        this.answerByTimeout();
+      }
+    }, 1000);
+  },
+
+  stopQuestionTimer() {
+    if (this.timerId) {
+      window.clearInterval(this.timerId);
+      this.timerId = null;
+    }
+  },
+
+  answerByTimeout() {
+    if (this.answered || !this.currentQuestion) {
+      return;
+    }
+
+    this.answered = true;
+    this.isCorrect = false;
+    this.answeredCount++;
+    this.timeoutOccurred = true;
+    if (this.gameMode === "certification" &&
+        this.answeredCount >= this.certificationQuestionCount) {
+      this.certificationFinished = true;
     }
   },
 
@@ -515,7 +559,6 @@ finally {
   getQuestionTypeId(question) {
     const map = {
       "ポケモン名": "name",
-      "図鑑クイズ": "dex",
       "タイプ": "type",
       "とくせい": "ability",
       "おぼえるわざ": "move",
@@ -523,7 +566,8 @@ finally {
       "シルエット": "silhouette",
       "色ちがい": "shiny",
       "身長比較": "heightComparison",
-      "体重比較": "weightComparison"
+      "体重比較": "weightComparison",
+      "図鑑クイズ": "dex"
     };
 
     return map[question.typeLabel] || "";
@@ -562,12 +606,19 @@ finally {
       this.currentQuestion.correctAnswer === 1 ||
       this.currentQuestion.correctAnswer === "1";
 
+    this.stopQuestionTimer();
+    this.timeoutOccurred = false;
     this.answered = true;
     this.isCorrect = selected === correct;
     this.answeredCount++;
 
     if (this.isCorrect) {
       this.score++;
+    }
+
+    if (this.gameMode === "certification" &&
+        this.answeredCount >= this.certificationQuestionCount) {
+      this.certificationFinished = true;
     }
   }
 };
