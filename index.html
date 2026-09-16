@@ -250,14 +250,23 @@
       <div class="certification-result-message" :class="{ passed: (score / certificationQuestionCount) >= 0.7 }">
         {{ (score / certificationQuestionCount) >= 0.7 ? '合格！' : '不合格' }}
       </div>
+
+      <div class="certification-share-actions">
+        <button class="share-button x-share-button" @click="shareToX">
+          𝕏 Xに投稿
+        </button>
+        <button class="share-button line-share-button" @click="shareToLine">
+          LINEでシェア
+        </button>
+      </div>
+
       <button class="primary-button start-button" @click="returnToTitle">タイトルへ戻る</button>
     </section>
 
     <template v-else-if="screen === 'quiz'">
       <header class="quiz-header">
         <h1>ポケモン○×クイズ</h1>
-        <p v-if="gameMode === 'certification'" class="certification-mode-label">検定モード　{{ certificationLevelName }}</p>
-        <p v-else>{{ selectedTitles.length }}タイトル・{{ selectedQuestionTypes.length }}種類から出題</p>
+        <p>{{ selectedTitles.length }}タイトル・{{ selectedQuestionTypes.length }}種類から出題</p>
       </header>
 
       <section v-if="loading" class="card status-card">
@@ -272,8 +281,7 @@
 
       <section v-else class="card">
         <div class="quiz-info">
-          <span v-if="gameMode === 'certification'">{{ questionNumber }}/{{ certificationQuestionCount }}</span>
-          <span v-else>問題 {{ questionNumber }}</span>
+          <span>問題 {{ questionNumber }}</span>
           <span v-if="gameMode === 'certification'">残り {{ timerSeconds }}秒</span>
           <span v-else>正解 {{ score }} / {{ answeredCount }}</span>
         </div>

@@ -101,6 +101,44 @@ const app = createApp({
       this.screen = "title";
     },
 
+    getCertificationShareText() {
+      const count = this.certificationQuestionCount;
+      const correct = this.score;
+      const passed = count > 0 && correct / count >= 0.7;
+
+      return [
+        "ポケモン○×クイズ",
+        `検定モード　${this.certificationLevelName}`,
+        `${correct}/${count}問正解！`,
+        passed ? "合格しました！" : "今回は不合格でした。",
+        "#ポケモンクイズ"
+      ].join("\n");
+    },
+
+    shareToX() {
+      const text = this.getCertificationShareText();
+      const url = window.location.href;
+      const shareUrl =
+        "https://twitter.com/intent/tweet?text=" +
+        encodeURIComponent(text) +
+        "&url=" +
+        encodeURIComponent(url);
+
+      window.open(shareUrl, "_blank", "noopener,noreferrer");
+    },
+
+    shareToLine() {
+      const text =
+        this.getCertificationShareText() +
+        "\n" +
+        window.location.href;
+      const shareUrl =
+        "https://line.me/R/share?text=" +
+        encodeURIComponent(text);
+
+      window.location.href = shareUrl;
+    },
+
 
     ...initMethods,
     ...questionMethods,
